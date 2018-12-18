@@ -1,6 +1,7 @@
 *.txt
 *.png
 *.csv
+img/
 # History files
 .Rhistory
 .Rapp.history
