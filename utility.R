@@ -1,59 +1,43 @@
-initDataFrame <- function(original_data) {
-
-    full_messages <- do.call(paste, c(original_data[,0:ncol(original_data)], sep=" ")) %>%
-        gsub(" NA", "", .) %>%
-        trimws %>%
-        tolower()
-    rows_no_timestamp <- grep("^\\D", full_messages) # Alles dat zonder digit begint. Gaan we in een loopje toepassen die over
-    # de inverse van de data iterate.
-    i = length(full_messages)
+initDataFrame <- function(original.data) {
+    full.messages <- tolower(original.data)
+    rows.with.timestamp <- grep("^[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} - ", full.messages)
+    i = length(full.messages)
     while (i > 0) {
         i <- i - 1;
-        if (i %in% rows_no_timestamp) {
-            full_messages[i- 1] <- paste(full_messages[i- 1], full_messages[i])
+        if (!(i %in% rows.with.timestamp)) {
+            full.messages[i- 1] <- paste(full.messages[i- 1], full.messages[i])
         }
     }
-    full_messages <- full_messages[-rows_no_timestamp]
-    original_data <- strsplit(full_messages, " ")
+    full.messages <- full.messages[rows.with.timestamp]
+    date.times <- str_match(full.messages, regex('^[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}')) %>%
+        strptime("%d-%m-%y %H:%M") %>%
+        as.Date.POSIXlt()
+    message.author <- str_match(full.messages, regex(' - [a-z ]+: ')) %>%
+        gsub(" - ", "", .) %>%
+        gsub(": ", "", .)
+    message.content <- str_remove(
+        full.messages,
+        regex('^[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} - [a-z ]+: ')
+    )
 
-    dates <- as.vector(sapply(original_data, function(x) { return(x[1]) }))
-    timestamps <- as.vector(sapply(original_data, function(x) { return(x[2]) }))
-    friends <- as.vector(sapply(original_data, function(x) { return(x[4]) }))
-
-    content_columns <- sapply(original_data, function(x) {
-        stringified <- paste(x[-(1:4)], collapse = " ")
-        return(stringified)
-    })
-
-    #content <- do.call(paste, c(content_columns, sep=" ")) %>%
-    #    gsub(" NA", "", .) %>%
-    #    trimws
-
-    # Real friends have ":" in their name.
-    actual_friends <- grep(":", friends)
-
-    #Transform the dates to actual dates instead of strings.
-    date_times <- paste(dates,  timestamps) %>% strptime("%m/%d/%y %H:%M:%S") %>% as.POSIXlt()
-
-    # We only want our real fr                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    iends to end up in the data frame.
-    chat_data <- data.frame(
-        DateTimes = date_times[actual_friends],
-        Friends = gsub(":", "", friends[actual_friends]),
-        Content = content_columns[actual_friends],
+    chat.data <- data.frame(
+        DateTimes = date.times,
+        Friends = message.author,
+        Content = message.content,
         stringsAsFactors = FALSE
     )
 
     # Also add message length and word count
-    chat_data$MessageLength <- nchar(chat_data$Content)
-    chat_data$WordCount<- sapply(
-        chat_data$Content,
+    chat.data$MessageLength <- nchar(chat.data$Content)
+    chat.data$WordCount<- sapply(
+        chat.data$Content,
         function(x) { return(length(unlist(strsplit(x, " ")))) }
     )
-    names(chat_data$WordCount) <- NULL
+    names(chat.data$WordCount) <- NULL
 
     # Assign everyone's gender.
-    chat_data$Gender <- sapply(chat_data$Friends, assignGender)
-    return(chat_data)
+    chat.data$Gender <- sapply(chat.data$Friends, assignGender)
+    return(chat.data)
 }
 
 savePlotPicture <- function(plot_to_print, image_name) {
@@ -62,16 +46,16 @@ savePlotPicture <- function(plot_to_print, image_name) {
     dev.off()
 }
 
-printMessageLengthData <- function(chat_data, name) {
-    meanMessageLength <- mean(chat_data$MessageLength)
-    minMessageLength <- min(chat_data$MessageLength)
-    maxMessageLength <- max(chat_data$MessageLength)
-    minMessage <- chat_data[which.min(chat_data$MessageLength),]$Content
-    maxMessage <- chat_data[which.max(chat_data$MessageLength),]$Content
+printMessageLengthData <- function(chat.data, name) {
+    meanMessageLength <- mean(chat.data$MessageLength)
+    minMessageLength <- min(chat.data$MessageLength)
+    maxMessageLength <- max(chat.data$MessageLength)
+    minMessage <- chat.data[which.min(chat.data$MessageLength),]$Content
+    maxMessage <- chat.data[which.max(chat.data$MessageLength),]$Content
 
-    meanWordCount <- mean(chat_data$WordCount)
-    minWordCount <- min(chat_data$WordCount)
-    maxWordCount <- max(chat_data$WordCount)
+    meanWordCount <- mean(chat.data$WordCount)
+    minWordCount <- min(chat.data$WordCount)
+    maxWordCount <- max(chat.data$WordCount)
 
     print(
         paste(
@@ -87,16 +71,37 @@ printMessageLengthData <- function(chat_data, name) {
 }
 
 toSpace <- content_transformer(function(x, pattern) {return (gsub(pattern, " ", x))})
+alterApostrophe <- content_transformer(
+    function(x) {
+        x <- gsub("’", "'", x)
+        return (x)
+    }
+)
+decreaseLaughter <- content_transformer(
+    function(x) {
+        x <- str_replace_all(x, regex("a*ha+h[ha]*"), "hahaha")
+        return (x)
+    }
+)
 
-createCleanCorpus <- function(content) {
-    dutch_stop_words <- readLines("dutch_stop_words.txt")
+createCleanCorpus <- function(content, language) {
     content <- bracketX(content)
     corpus <- Corpus(VectorSource(content))
     corpus <- tm_map(corpus, toSpace, "-")
     corpus <- tm_map(corpus, toSpace, ":")
+    corpus <- tm_map(corpus, alterApostrophe)
     corpus <- tm_map(corpus, removePunctuation)
-    corpus <- tm_map(corpus, removeWords, c(dutch_stop_words, "nee"))
+    corpus <- tm_map(corpus, decreaseLaughter)
+    # Swap to switch between languages
+    if (language == "nl") {
+        dutch_stop_words <- readLines("dutch_stop_words.txt")
+        corpus <- tm_map(corpus, removeWords, c(dutch_stop_words, "nee"))
+    } else {
+        stopwords_eng <- stopwords() %>% gsub("’", "", .) %>% gsub("'", "", .)
+        corpus <- tm_map(corpus, removeWords, c(stopwords_eng, "just", "also", "really", "thats", "get"))
+    }
     corpus <- tm_map(corpus, stripWhitespace)
+
     return(corpus)
 }
 
@@ -105,8 +110,8 @@ createWordCloud <- function(cloud_tdm, title) {
     sorted_matrix <- sort(rowSums(matrix), decreasing = TRUE)
     sorted_df <- data.frame(word = names(sorted_matrix), freq = sorted_matrix)
 
-    print("top 10 woorden: ")
-    print(head(sorted_matrix, 10))
+    print("top 20 woorden: ")
+    print(head(sorted_matrix, 20))
     cloud <- wordcloud2(
         sorted_df,
         color ="random-light",
@@ -117,8 +122,7 @@ createWordCloud <- function(cloud_tdm, title) {
 }
 
 assignGender <- function(name) {
-    women <- c("elja", "lisa", "kim", "irene", "linda", "amber", "jessica", "muriel",
-               "renske", "sophie", "amarja", "eva")
+    women <- c("")
     gender <- if(name %in% women) 'F' else 'M'
     return(gender)
 }
