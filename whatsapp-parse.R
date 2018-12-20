@@ -6,6 +6,7 @@ require(qdap)
 require(webshot)
 require(htmlwidgets)
 require(stringr)
+require(scales)
 
 source("utility.R")
 
