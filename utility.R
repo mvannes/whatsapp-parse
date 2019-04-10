@@ -12,7 +12,7 @@ initDataFrame <- function(original.data) {
     date.times <- str_match(full.messages, regex('^[0-9]{2}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}')) %>%
         strptime("%d-%m-%y %H:%M") %>%
         as.Date.POSIXlt()
-    message.author <- str_match(full.messages, regex(' - [a-z ]+: ')) %>%
+    message.author <- str_match(full.messages, regex(' - [a-z +0-9]+: ')) %>%
         gsub(" - ", "", .) %>%
         gsub(": ", "", .)
     message.content <- str_remove(
