@@ -59,11 +59,14 @@ printMessageLengthData <- function(chat.data, name) {
 
     print(
         paste(
-            "Het gemiddelde bericht van ", name, " was ", round(meanMessageLength, 2), " karakters lang.",
-            "Het kleinste bericht was ", minMessageLength, " karakters lang en was het volgende bericht: '", minMessage, "'",
-            "Het grootste bericht was ", maxMessageLength, " karakters lang en was het volgende bericht: '", maxMessage, "'",
-            "Het minst aantal woorden in een bericht was ", minWordCount, " het meeste aantal woorden in een bericht was ", maxWordCount,
-            "gemiddeld zijn dit ", meanWordCount, " woorden",
+            "Average message by ", name, " was: ", round(meanMessageLength, 2), " characters.",
+            "The smallest message was: ", minMessageLength, " characters, and was the following: '",
+            minMessage, "'",
+            "The largest message was: ", maxMessageLength, " characters, and was the following: '",
+            maxMessage, "'",
+            "The minimum amount of words in one message was: ", minWordCount, " while the maxium was: ",
+            maxWordCount, ".",
+            "On average, this is ", meanWordCount, " words.",
             sep = ""
 
         )
@@ -122,7 +125,7 @@ createWordCloud <- function(cloud_tdm, title) {
 }
 
 assignGender <- function(name) {
-    women <- c("")
+    women <- c("sabrina")
     gender <- if(name %in% women) 'F' else 'M'
     return(gender)
 }

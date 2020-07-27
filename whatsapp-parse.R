@@ -12,9 +12,9 @@ source("utility.R")
 
 # Already done some alterations to
 original.data <- readLines(
-    ""
+    "chat.txt"
 )
-language <- "en"
+language <- "nl"
 chat.data <- initDataFrame(original.data)
 
 friend.names = unique(chat.data$Friends)
@@ -52,13 +52,22 @@ savePlotPicture(plot, "word-count-boxplot.png")
 
 plot <- ggplot(chat.data.text, aes(x = DateTimes, color = Friends, fill = Friends)) +
     geom_line(stat="count") +
-  # geom_histogram(bins = length(unique(chat.data.text$DateTimes))) +
-  ylab("Amount of text messages") +
-  xlab("Time") +
-  scale_x_date(breaks=date_breaks("1 day"), labels=date_format("%d %b")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    # geom_histogram(bins = length(unique(chat.data.text$DateTimes))) +
+    ylab("Amount of text messages") +
+    xlab("Time") +
+    scale_x_date(breaks=date_breaks("1 day"), labels=date_format("%d %b")) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-savePlotPicture(plot, "text-messages-over-time.png")
+savePlotPicture(plot, "text-messages-over-time-line.png")
+
+plot <- ggplot(chat.data.text, aes(x = DateTimes, color = Friends, fill = Friends)) +
+    geom_histogram(bins = length(unique(chat.data.text$DateTimes))) +
+    ylab("Amount of text messages") +
+    xlab("Time") +
+    scale_x_date(breaks=date_breaks("1 day"), labels=date_format("%d %b")) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+savePlotPicture(plot, "text-messages-over-time-stacked-bar.png")
 
 plot <- ggplot(chat.data.media, aes(x=DateTimes, fill=Friends)) +
   geom_histogram(bins = length(unique(chat.data.media$DateTimes))) +
@@ -87,8 +96,11 @@ createWordCloud(full.content.tdm, "full-content-cloud")
 for (name in friend.names) {
   friend.data.text <- chat.data.text %>% filter(., Friends == name)
   friend.data.media <- chat.data.media %>% filter(., Friends == name)
+  print("Amount of messages sent:")
   print(nrow(friend.data.text) + nrow(friend.data.media))
+  print("Amount of text messages:")
   print(nrow(friend.data.text))
+  print("Amount of media messages:")
   print(nrow(friend.data.media))
   printMessageLengthData(friend.data.text, name)
 
